@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from torchvision import datasets, models, transforms
 from torch.autograd import Variable
-
+import torch.backends.cudnn as cudnn
 #transform_train = transforms.Compose([
 #    transforms.RandomCrop(32, padding=4),
 #    transforms.RandomHorizontalFlip(),
