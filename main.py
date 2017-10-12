@@ -47,7 +47,7 @@ if use_cuda:
 
 criterion = nn.CrossEntropyLoss()
 
-params = list(model.classifier._modules['6'].parameters()) + list(model.classifier._modules['7'].parameters()) + list(model.classifier._modules['8'].parameters())
+params = list(net.classifier._modules['6'].parameters()) + list(net.classifier._modules['7'].parameters()) + list(net.classifier._modules['8'].parameters())
 optimizer = torch.optim.SGD(params, lr=0.01, momentum=0.5)
 
 def train(epoch):
