@@ -42,8 +42,8 @@ net = alexnet_model
 use_cuda = torch.cuda.is_available()
 if use_cuda:
     net.cuda()
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-    cudnn.benchmark = True
+#    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+#    cudnn.benchmark = True
 
 criterion = nn.CrossEntropyLoss()
 
