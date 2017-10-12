@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(description='Deep Hashing')
 parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                     help='learning rate (default: 0.01)')
 #lr参数，默认为0.01
-parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
+parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.9)')
 #momentum参数，默认为0.5
 args = parser.parse_args()
@@ -30,12 +30,13 @@ args = parser.parse_args()
 best_acc = 0
 start_epoch = 0
 transform_train = transforms.Compose(
-    [transforms.CenterCrop(227),
+    [transforms.Scale(256),
+     transforms.RandomCrop(227),
      transforms.RandomHorizontalFlip(),
      transforms.ToTensor(),
      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 transform_test = transforms.Compose(
-    [transforms.CenterCrop(227),
+    [transforms.Scale(227),
      transforms.ToTensor(),
      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 trainset = datasets.CIFAR10(root='./data', train=True, download=True,
@@ -54,8 +55,8 @@ alexnet_model = models.alexnet(pretrained=True)
 #    param.requires_grad = False
 
 alexnet_model.classifier._modules['6'] = nn.Linear(4096, 48)
-alexnet_model.classifier._modules['7'] = nn.ReLU()
-alexnet_model.classifier._modules['8'] = nn.Linear(48, 1000)
+alexnet_model.classifier._modules['7'] = nn.Sigmoid()
+alexnet_model.classifier._modules['8'] = nn.Linear(48, 10)
 
 net = alexnet_model
 
@@ -72,7 +73,9 @@ base_params = list(net.features.parameters()) + list(net.classifier._modules['0'
 #optimizer = torch.optim.SGD(params, lr=0.01, momentum=0.5)
 #optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
 optimizer = torch.optim.SGD([{'params': ignored_params}, {'params': base_params, 'lr': 0.1*args.lr}], lr=args.lr, momentum=args.momentum, weight_decay=0.0005)
-scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[32, 50], gamma=0.1)
+#optimizer = torch.optim.SGD(net.classifier._modules['6'].parameters(), lr=args.lr, momentum=args.momentum)
+# scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[32, 50], gamma=0.1)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
 def train(epoch):
     print('\nEpoch: %d' % epoch)
     net.train()
@@ -117,7 +120,7 @@ def test(epoch):
 
         print(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
-
+    return test_loss/(batch_idx+1)
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
@@ -134,6 +137,7 @@ def test(epoch):
 
 
 for epoch in range(start_epoch, start_epoch+64):
-    scheduler.step()
+#    scheduler.step()
     train(epoch)
-    test(epoch)
+    val_loss=test(epoch)
+    scheduler.step(val_loss)
