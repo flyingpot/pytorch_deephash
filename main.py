@@ -17,7 +17,7 @@ from torch.autograd import Variable
 transform = transforms.Compose(
     [transforms.CenterCrop(227),
      transforms.ToTensor(),
-     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 trainset = datasets.CIFAR10(root='./data', train=True, download=True,
                             transform=transform)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=128,
@@ -37,20 +37,25 @@ alexnet_model.classifier._modules['6'] = nn.Linear(4096, 48)
 alexnet_model.classifier._modules['7'] = nn.Sigmoid()
 alexnet_model.classifier._modules['8'] = nn.Linear(48, 1000)
 
-model = alexnet_model
-model.cuda()
+net = alexnet_model
+
+use_cuda = torch.cuda.is_available()
+if use_cuda:
+    net.cuda()
+    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    cudnn.benchmark = True
 
 criterion = nn.CrossEntropyLoss()
 
-params = list(model.classifier._modules['6'].parameters()) + list(model.classifier._modules['7'].parameters()) + list(model.classifier._modules['8'].parameters())  
+params = list(model.classifier._modules['6'].parameters()) + list(model.classifier._modules['7'].parameters()) + list(model.classifier._modules['8'].parameters())
 optimizer = torch.optim.SGD(params, lr=0.01, momentum=0.5)
 
 def train(epoch):
-    model.train()
+    net.train()
     for batch_idx, (data, target) in enumerate(trainloader):
         data, target = Variable(data.cuda()), Variable(target.cuda())
         optimizer.zero_grad()
-        output = model(data)
+        output = net(data)
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
