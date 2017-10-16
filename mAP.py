@@ -19,14 +19,6 @@ parser.add_argument('--pretrained', type=int, default=0, metavar='pretrained_mod
                     help='loading pretrained model(default = None)')
 args = parser.parse_args()
 
-net = models.alexnet()
-net.classifier._modules['6'] = nn.Linear(4096, 48)
-net.classifier._modules['7'] = nn.Sigmoid()
-net.classifier._modules['8'] = nn.Linear(48, 10)
-net.load_state_dict(torch.load('./model/%d' %args.pretrained))
-new_classifier = nn.Sequential(*list(net.classifier.children())[:-1])
-net.classifier = new_classifier
-
 def load_data():
     transform_train = transforms.Compose(
         [transforms.Scale(227),
@@ -47,11 +39,18 @@ def load_data():
                                              shuffle=False, num_workers=2)
     return trainloader, testloader
 
-use_cuda = torch.cuda.is_available()
-if use_cuda:
-    net.cuda()
 
 def binary_output(dataloader):
+    net = models.alexnet()
+    net.classifier._modules['6'] = nn.Linear(4096, 48)
+    net.classifier._modules['7'] = nn.Sigmoid()
+    net.classifier._modules['8'] = nn.Linear(48, 10)
+    net.load_state_dict(torch.load('./model/%d' %args.pretrained))
+    new_classifier = nn.Sequential(*list(net.classifier.children())[:-1])
+    net.classifier = new_classifier
+    use_cuda = torch.cuda.is_available()
+    if use_cuda:
+        net.cuda()
     full_batch_output = torch.cuda.FloatTensor()
     full_batch_label = torch.cuda.LongTensor()
     net.eval()
@@ -71,37 +70,31 @@ def precision(trn_binary, trn_label, tst_binary, tst_label):
     tst_binary = tst_binary.cpu().numpy()
     tst_binary = np.asarray(tst_binary, np.int32)
     tst_label = tst_label.cpu().numpy()
+    # binary_len = tst_binary.shape[1]
     query_times = tst_binary.shape[0]
     trainset_len = train_binary.shape[0]
     AP = np.zeros(query_times)
     Ns = np.arange(1, trainset_len + 1)
+    total_time_start = time.time()
     for i in range(query_times):
-        query_starttime = time.time()
+        print('Query ', i+1)
+        # query_starttime = time.time()
         query_label = tst_label[i]
         query_binary = tst_binary[i,:]
-        query_result = np.empty([50000, ])
-        buffer_yes = np.zeros([50000, ])
-        dist_starttime = time.time()
-        for j in range(trainset_len):
-            query_result[j] = hamming(query_binary, trn_binary[j,:])
-            # print(type(query_binary))
-            # query_result[j] = np.count_nonzero(query_binary,trn_binary[j,:]) / 48
-        print(time.time() - dist_starttime)
+        query_result = np.count_nonzero(query_binary != trn_binary, axis=1)    #don't need to divide binary length
         sort_indices = np.argsort(query_result)
-        for j in range(trainset_len):
-            retrieval_label = trn_label[int(sort_indices[j])]
-            if(query_label == retrieval_label):
-                buffer_yes[j] = 1
+        buffer_yes= np.equal(query_label, trn_label[sort_indices]).astype(int)
         P = np.cumsum(buffer_yes) / Ns
         AP[i] = np.sum(P * buffer_yes) /sum(buffer_yes)
-        print('query time', time.time() - query_starttime)
-        print(P)
+        # print('query time ', time.time() - query_starttime)
     map = np.mean(AP)
+    print(map)
+    print('total query time = ', time.time() - total_time_start)
 
 
 
 if os.path.exists('./result/train_binary') and os.path.exists('./result/train_label') and \
-   os.path.exists('./result/test_binary') and os.path.exists('./result/test_label'):
+   os.path.exists('./result/test_binary') and os.path.exists('./result/test_label') and args.pretrained == 0:
     train_binary = torch.load('./result/train_binary')
     train_label = torch.load('./result/train_label')
     test_binary = torch.load('./result/test_binary')
