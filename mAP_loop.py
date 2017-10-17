@@ -41,10 +41,11 @@ def load_data():
 
 
 def binary_output(dataloader):
+    # global binary_len
     net = models.alexnet()
-    net.classifier._modules['6'] = nn.Linear(4096, 48)
+    net.classifier._modules['6'] = nn.Linear(4096, 128)
     net.classifier._modules['7'] = nn.Sigmoid()
-    net.classifier._modules['8'] = nn.Linear(48, 10)
+    net.classifier._modules['8'] = nn.Linear(128, 10)
     net.load_state_dict(torch.load('./model/%d' %args.pretrained))
     new_classifier = nn.Sequential(*list(net.classifier.children())[:-1])
     net.classifier = new_classifier
@@ -58,16 +59,20 @@ def binary_output(dataloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
+        # outputs = net(inputs)[:,:binary_len]
         outputs = net(inputs)
+        # print(outputs)
         full_batch_output = torch.cat((full_batch_output, outputs.data), 0)
         full_batch_label = torch.cat((full_batch_label, targets.data), 0)
     return torch.round(full_batch_output), full_batch_label
 
 def precision(trn_binary, trn_label, tst_binary, tst_label):
-    trn_binary = trn_binary.cpu().numpy()
+    global binary_len
+    global f
+    trn_binary = trn_binary.cpu().numpy()[:,:binary_len]
     trn_binary = np.asarray(trn_binary, np.int32)
     trn_label = trn_label.cpu().numpy()
-    tst_binary = tst_binary.cpu().numpy()
+    tst_binary = tst_binary.cpu().numpy()[:,:binary_len]
     tst_binary = np.asarray(tst_binary, np.int32)
     tst_label = tst_label.cpu().numpy()
     # binary_len = tst_binary.shape[1]
@@ -90,26 +95,28 @@ def precision(trn_binary, trn_label, tst_binary, tst_label):
     map = np.mean(AP)
     print(map)
     print('total query time = ', time.time() - total_time_start)
+    with open('len_result', 'a') as f:
+        f.write('len: {:d} mAP: {:f}\n'.format(binary_len, map))
 
 
+for binary_len in range(1, 256):
+    if os.path.exists('./result/train_binary') and os.path.exists('./result/train_label') and \
+       os.path.exists('./result/test_binary') and os.path.exists('./result/test_label') and args.pretrained == 0:
+        train_binary = torch.load('./result/train_binary')
+        train_label = torch.load('./result/train_label')
+        test_binary = torch.load('./result/test_binary')
+        test_label = torch.load('./result/test_label')
 
-if os.path.exists('./result/train_binary') and os.path.exists('./result/train_label') and \
-   os.path.exists('./result/test_binary') and os.path.exists('./result/test_label') and args.pretrained == 0:
-    train_binary = torch.load('./result/train_binary')
-    train_label = torch.load('./result/train_label')
-    test_binary = torch.load('./result/test_binary')
-    test_label = torch.load('./result/test_label')
+    else:
+        trainloader, testloader = load_data()
+        train_binary, train_label = binary_output(trainloader)
+        test_binary, test_label = binary_output(testloader)
+        if not os.path.isdir('result'):
+            os.mkdir('result')
+        torch.save(train_binary, './result/train_binary')
+        torch.save(train_label, './result/train_label')
+        torch.save(test_binary, './result/test_binary')
+        torch.save(test_label, './result/test_label')
 
-else:
-    trainloader, testloader = load_data()
-    train_binary, train_label = binary_output(trainloader)
-    test_binary, test_label = binary_output(testloader)
-    if not os.path.isdir('result'):
-        os.mkdir('result')
-    torch.save(train_binary, './result/train_binary')
-    torch.save(train_label, './result/train_label')
-    torch.save(test_binary, './result/test_binary')
-    torch.save(test_label, './result/test_label')
-
-
-precision(train_binary, train_label, test_binary, test_label)
+    # f = open('len_result', 'w')
+    precision(train_binary, train_label, test_binary, test_label)
