@@ -45,7 +45,7 @@ def load_data():
 def binary_output(dataloader):
     net = models.alexnet()
     net.classifier._modules['6'] = nn.Linear(4096, args.bits)
-    net.classifier._modules['7'] = nn.BatchNorm1d(args.bits)
+    net.classifier._modules['7'] = nn.BatchNorm1d(args.bits, affine=False)
     net.classifier._modules['8'] = nn.Sigmoid()
     net.classifier._modules['9'] = nn.Linear(args.bits, 10)
     net.load_state_dict(torch.load('./model/%d' %args.pretrained))

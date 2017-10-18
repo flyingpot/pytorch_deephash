@@ -62,7 +62,7 @@ alexnet_model = models.alexnet(pretrained=True)
 #    param.requires_grad = False
 
 alexnet_model.classifier._modules['6'] = nn.Linear(4096, args.bits)
-alexnet_model.classifier._modules['7'] = nn.BatchNorm1d(args.bits)
+alexnet_model.classifier._modules['7'] = nn.BatchNorm1d(args.bits, affine=False)
 alexnet_model.classifier._modules['8'] = nn.Sigmoid()
 alexnet_model.classifier._modules['9'] = nn.Linear(args.bits, 10)
 
