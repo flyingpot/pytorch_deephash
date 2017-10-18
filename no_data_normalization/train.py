@@ -40,12 +40,12 @@ transform_train = transforms.Compose(
     [transforms.Scale(256),
      transforms.RandomCrop(227),
      transforms.RandomHorizontalFlip(),
-     transforms.ToTensor(),
-     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
+     transforms.ToTensor()])
+     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 transform_test = transforms.Compose(
     [transforms.Scale(227),
-     transforms.ToTensor(),
-     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
+     transforms.ToTensor()])
+     # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 trainset = datasets.CIFAR10(root='./data', train=True, download=True,
                             transform=transform_train)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=128,
@@ -62,9 +62,8 @@ alexnet_model = models.alexnet(pretrained=True)
 #    param.requires_grad = False
 
 alexnet_model.classifier._modules['6'] = nn.Linear(4096, args.bits)
-alexnet_model.classifier._modules['7'] = nn.BatchNorm1d(args.bits)
-alexnet_model.classifier._modules['8'] = nn.Sigmoid()
-alexnet_model.classifier._modules['9'] = nn.Linear(args.bits, 10)
+alexnet_model.classifier._modules['7'] = nn.Sigmoid()
+alexnet_model.classifier._modules['8'] = nn.Linear(args.bits, 10)
 
 net = alexnet_model
 
@@ -76,7 +75,7 @@ if use_cuda:
 
 criterion = nn.CrossEntropyLoss()
 
-ignored_params = list(net.classifier._modules['6'].parameters()) + list(net.classifier._modules['7'].parameters()) + list(net.classifier._modules['8'].parameters()) + list(net.classifier._modules['9'].parameters())
+ignored_params = list(net.classifier._modules['6'].parameters()) + list(net.classifier._modules['7'].parameters()) + list(net.classifier._modules['8'].parameters())
 base_params = list(net.features.parameters()) + list(net.classifier._modules['0'].parameters()) + list(net.classifier._modules['1'].parameters()) + list(net.classifier._modules['2'].parameters()) + list(net.classifier._modules['3'].parameters()) + list(net.classifier._modules['4'].parameters()) + list(net.classifier._modules['5'].parameters())
 #optimizer = torch.optim.SGD(params, lr=0.01, momentum=0.5)
 #optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
