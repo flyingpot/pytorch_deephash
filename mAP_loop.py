@@ -17,6 +17,8 @@ import torch.optim.lr_scheduler
 parser = argparse.ArgumentParser(description='Deep Hashing evaluate mAP')
 parser.add_argument('--pretrained', type=int, default=0, metavar='pretrained_model',
                     help='loading pretrained model(default = None)')
+parser.add_argument('--bits', type=int, default=48, metavar='bts',
+                    help='binary bits')
 args = parser.parse_args()
 
 def load_data():
@@ -43,9 +45,9 @@ def load_data():
 def binary_output(dataloader):
     # global binary_len
     net = models.alexnet()
-    net.classifier._modules['6'] = nn.Linear(4096, 128)
+    net.classifier._modules['6'] = nn.Linear(4096, args.bits)
     net.classifier._modules['7'] = nn.Sigmoid()
-    net.classifier._modules['8'] = nn.Linear(128, 10)
+    net.classifier._modules['8'] = nn.Linear(args.bits, 10)
     net.load_state_dict(torch.load('./model/%d' %args.pretrained))
     new_classifier = nn.Sequential(*list(net.classifier.children())[:-1])
     net.classifier = new_classifier
@@ -99,9 +101,8 @@ def precision(trn_binary, trn_label, tst_binary, tst_label):
         f.write('len: {:d} mAP: {:f}\n'.format(binary_len, map))
 
 
-for binary_len in range(1, 256):
-    if os.path.exists('./result/train_binary') and os.path.exists('./result/train_label') and \
-       os.path.exists('./result/test_binary') and os.path.exists('./result/test_label') and args.pretrained == 0:
+for binary_len in range(1, args.bits):
+    if binary_len > 0:
         train_binary = torch.load('./result/train_binary')
         train_label = torch.load('./result/train_label')
         test_binary = torch.load('./result/test_binary')
