@@ -17,6 +17,8 @@ import torch.optim.lr_scheduler
 parser = argparse.ArgumentParser(description='Deep Hashing evaluate mAP')
 parser.add_argument('--pretrained', type=int, default=0, metavar='pretrained_model',
                     help='loading pretrained model(default = None)')
+parser.add_argument('--bits', type=int, default=48, metavar='bts',
+                    help='binary bits')
 args = parser.parse_args()
 
 def load_data():
@@ -42,9 +44,9 @@ def load_data():
 
 def binary_output(dataloader):
     net = models.alexnet()
-    net.classifier._modules['6'] = nn.Linear(4096, 48)
+    net.classifier._modules['6'] = nn.Linear(4096, args.bits)
     net.classifier._modules['7'] = nn.Sigmoid()
-    net.classifier._modules['8'] = nn.Linear(48, 10)
+    net.classifier._modules['8'] = nn.Linear(args.bits, 10)
     net.load_state_dict(torch.load('./model/%d' %args.pretrained))
     new_classifier = nn.Sequential(*list(net.classifier.children())[:-1])
     net.classifier = new_classifier
