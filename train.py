@@ -1,4 +1,5 @@
 import os
+import shutil
 import argparse
 
 import torch
@@ -29,6 +30,8 @@ parser.add_argument('--epoch', type=int, default=32, metavar='epoch',
                     help='epoch')
 parser.add_argument('--pretrained', type=int, default=0, metavar='pretrained_model',
                     help='loading pretrained model(default = None)')
+parser.add_argument('--bits', type=int, default=48, metavar='bts',
+                    help='binary bits')
 args = parser.parse_args()
 
 best_acc = 0
@@ -58,9 +61,9 @@ alexnet_model = models.alexnet(pretrained=True)
 #for param in alexnet_model.parameters():
 #    param.requires_grad = False
 
-alexnet_model.classifier._modules['6'] = nn.Linear(4096, 48)
+alexnet_model.classifier._modules['6'] = nn.Linear(4096, args.bits)
 alexnet_model.classifier._modules['7'] = nn.Sigmoid()
-alexnet_model.classifier._modules['8'] = nn.Linear(48, 10)
+alexnet_model.classifier._modules['8'] = nn.Linear(args.bits, 10)
 
 net = alexnet_model
 
@@ -131,6 +134,7 @@ def test():
         if not os.path.isdir('model'):
             os.mkdir('model')
         torch.save(net.state_dict(), './model/%d' %acc)
+        best_acc = acc
 #     # Save checkpoint.
 #     acc = 100.*correct/total
 #     if acc > best_acc:
@@ -149,6 +153,8 @@ if args.pretrained:
     net.load_state_dict(torch.load('./model/%d' %args.pretrained))
     test()
 else:
+    if os.path.isdir('model'):
+        shutil.rmtree('model')
     for epoch in range(start_epoch, start_epoch+args.epoch):
         val_loss = train(epoch)
         test()
