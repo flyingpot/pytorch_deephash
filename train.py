@@ -5,20 +5,14 @@ import argparse
 import torch
 import torch.nn as nn
 
+from net import AlexNetPlusLatent
+
 from torchvision import datasets, models, transforms
 from torch.autograd import Variable
 import torch.backends.cudnn as cudnn
 import torch.optim.lr_scheduler
-#transform_train = transforms.Compose([
-#    transforms.RandomCrop(32, padding=4),
-#    transforms.RandomHorizontalFlip(),
-#    transforms.ToTensor(),
-#    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-#])
-#transform_test = transforms.Compose([
-#    transforms.ToTensor(),
-#    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-#])
+
+
 parser = argparse.ArgumentParser(description='Deep Hashing')
 parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                     help='learning rate (default: 0.01)')
@@ -56,33 +50,24 @@ testset = datasets.CIFAR10(root='./data', train=False, download=True,
 testloader = torch.utils.data.DataLoader(testset, batch_size=100,
                                          shuffle=True, num_workers=2)
 
-alexnet_model = models.alexnet(pretrained=True)
-
-#for param in alexnet_model.parameters():
-#    param.requires_grad = False
-
-alexnet_model.classifier._modules['6'] = nn.Linear(4096, args.bits)
-alexnet_model.classifier._modules['7'] = nn.Sigmoid()
-alexnet_model.classifier._modules['8'] = nn.Linear(args.bits, 10)
-
-net = alexnet_model
+net = AlexNetPlusLatent(args.bits)
 
 use_cuda = torch.cuda.is_available()
+
 if use_cuda:
     net.cuda()
-#    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-#    cudnn.benchmark = True
 
-criterion = nn.CrossEntropyLoss()
+softmaxloss = nn.CrossEntropyLoss().cuda()
 
-ignored_params = list(net.classifier._modules['6'].parameters()) + list(net.classifier._modules['7'].parameters()) + list(net.classifier._modules['8'].parameters())
-base_params = list(net.features.parameters()) + list(net.classifier._modules['0'].parameters()) + list(net.classifier._modules['1'].parameters()) + list(net.classifier._modules['2'].parameters()) + list(net.classifier._modules['3'].parameters()) + list(net.classifier._modules['4'].parameters()) + list(net.classifier._modules['5'].parameters())
-#optimizer = torch.optim.SGD(params, lr=0.01, momentum=0.5)
-#optimizer = torch.optim.SGD(net.parameters(), lr=0.01, momentum=0.5)
-optimizer = torch.optim.SGD([{'params': ignored_params}, {'params': base_params, 'lr': 0.1*args.lr}], lr=args.lr, momentum=args.momentum, weight_decay=0.0005)
-#optimizer = torch.optim.SGD(net.classifier._modules['6'].parameters(), lr=args.lr, momentum=args.momentum)
-# scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[32, 50], gamma=0.1)
-scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
+
+ignored_params = list(net.Linear1.parameters()) + list(net.sigmoid.parameters()) + list(net.Linear2.parameters())
+
+base_params = list(net.remain.parameters()) + list(net.features.parameters())
+
+optimizer4nn = torch.optim.SGD([{'params': ignored_params}, {'params': base_params, 'lr': 0.1*args.lr}], lr=args.lr, momentum=args.momentum, weight_decay=0.0005)
+
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer4nn)
+
 def train(epoch):
     print('\nEpoch: %d' % epoch)
     net.train()
@@ -92,14 +77,16 @@ def train(epoch):
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
-        optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
+        _, outputs = net(inputs)
+        loss = softmaxloss(outputs, targets)
+        optimizer4nn.zero_grad()
 
-        train_loss += loss.data[0]
+        loss.backward()
+
+        optimizer4nn.step()
+
+        train_loss += softmaxloss(outputs, targets).data[0]
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
@@ -118,9 +105,8 @@ def test():
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-
+        _, outputs = net(inputs)
+        loss = softmaxloss(outputs, targets)
         test_loss += loss.data[0]
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
@@ -135,19 +121,6 @@ def test():
             os.mkdir('model')
         torch.save(net.state_dict(), './model/%d' %acc)
         best_acc = acc
-#     # Save checkpoint.
-#     acc = 100.*correct/total
-#     if acc > best_acc:
-#         print('Saving..')
-#         state = {
-# #            'net': net.parameters() if use_cuda else net,
-#             'acc': acc,
-#             'epoch': epoch,
-#         }
-#         if not os.path.isdir('checkpoint'):
-#             os.mkdir('checkpoint')
-#         torch.save(state, './checkpoint/ckpt.t7')
-#         best_acc = acc
 
 if args.pretrained:
     net.load_state_dict(torch.load('./model/%d' %args.pretrained))
@@ -159,3 +132,4 @@ else:
         val_loss = train(epoch)
         test()
         scheduler.step(val_loss)
+
