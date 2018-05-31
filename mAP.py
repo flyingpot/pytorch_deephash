@@ -93,7 +93,6 @@ if os.path.exists('./result/train_binary') and os.path.exists('./result/train_la
     train_label = torch.load('./result/train_label')
     test_binary = torch.load('./result/test_binary')
     test_label = torch.load('./result/test_label')
-    print(train_binary, train_label, test_label, test_label)
 
 else:
     trainloader, testloader = load_data()

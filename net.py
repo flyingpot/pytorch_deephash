@@ -19,5 +19,4 @@ class AlexNetPlusLatent(nn.Module):
         x = self.Linear1(x)
         features = self.sigmoid(x)
         result = self.Linear2(features)
-        #return features, result, reconstruction
         return features, result
