@@ -17,7 +17,7 @@ parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                     help='learning rate (default: 0.01)')
 parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.9)')
-parser.add_argument('--epoch', type=int, default=32, metavar='epoch',
+parser.add_argument('--epoch', type=int, default=128, metavar='epoch',
                     help='epoch')
 parser.add_argument('--pretrained', type=int, default=0, metavar='pretrained_model',
                     help='loading pretrained model(default = None)')
@@ -86,7 +86,7 @@ def train(epoch):
         correct += predicted.eq(targets.data).cpu().sum()
 
         print(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
+            % (train_loss/(batch_idx+1), 100*int(correct)/int(total), correct, total))
     return train_loss/(batch_idx+1)
 
 def test():
@@ -97,19 +97,21 @@ def test():
     for batch_idx, (inputs, targets) in enumerate(testloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
+        inputs, targets = Variable(inputs), Variable(targets)
         _, outputs = net(inputs)
         loss = softmaxloss(outputs, targets)
-        test_loss += loss.data[0]
+        test_loss += loss.item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
 
         print(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-            % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
-    acc = 100.*correct / total
-    if epoch == 128:
+            % (test_loss/(batch_idx+1), 100*int(correct)/int(total), correct, total))
+    acc = 100*int(correct) / int(total)
+    if epoch == args.epoch:
         print('Saving')
+        if not os.path.isdir('{}'.format(args.path)):
+            os.mkdir('{}'.format(args.path))
         torch.save(net.state_dict(), './{}/{}'.format(args.path, acc))
 
 if args.pretrained:
