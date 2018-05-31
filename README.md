@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This is the Pytorch implementation of [Deep Learning of Binary Hash Codes for Fast Image Retrieval](https://github.com/kevinlin311tw/caffe-cvprw15), and can achieve more than 94% mAP in CIFAR10 dataset.
+This is the Pytorch implementation of [Deep Learning of Binary Hash Codes for Fast Image Retrieval](https://github.com/kevinlin311tw/caffe-cvprw15), and can achieve more than 93% mAP in CIFAR10 dataset.
 
 ## Environment
 
@@ -20,14 +20,10 @@ You will get trained models in model folder by default, and models' names are th
 
 ## Evaluation
 
-```python
+```shell
 python mAP.py --pretrained {your saved model name in model folder by default}
 ```
 
 ## Tips
 
 There are some other args, which you can get them by adding '-h' or reading the code.
-
-## To do
-
-Add the implementation of NUS-WIDE dataset
