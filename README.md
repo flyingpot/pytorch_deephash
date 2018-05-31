@@ -6,9 +6,9 @@ This is the Pytorch implementation of [Deep Learning of Binary Hash Codes for Fa
 
 ## Environment
 
-> Pytorch 0.2.0_4
+> Pytorch 0.4.0
 
-> torchvision 0.1.9
+> torchvision 0.2.1
 
 ## Training
 

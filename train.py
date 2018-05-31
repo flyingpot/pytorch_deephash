@@ -30,13 +30,13 @@ args = parser.parse_args()
 best_acc = 0
 start_epoch = 1
 transform_train = transforms.Compose(
-    [transforms.Scale(256),
+    [transforms.Resize(256),
      transforms.RandomCrop(227),
      transforms.RandomHorizontalFlip(),
      transforms.ToTensor(),
      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 transform_test = transforms.Compose(
-    [transforms.Scale(227),
+    [transforms.Resize(227),
      transforms.ToTensor(),
      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
 trainset = datasets.CIFAR10(root='./data', train=True, download=True,
@@ -80,7 +80,7 @@ def train(epoch):
 
         optimizer4nn.step()
 
-        train_loss += softmaxloss(outputs, targets).data[0]
+        train_loss += softmaxloss(outputs, targets).item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
