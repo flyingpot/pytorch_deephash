@@ -1,7 +1,10 @@
+import os
 import torch.nn as nn
 from torchvision import models
 
+os.environ['TORCH_HOME'] = 'models'
 alexnet_model = models.alexnet(pretrained=True)
+
 
 class AlexNetPlusLatent(nn.Module):
     def __init__(self, bits):
@@ -12,6 +15,7 @@ class AlexNetPlusLatent(nn.Module):
         self.Linear1 = nn.Linear(4096, self.bits)
         self.sigmoid = nn.Sigmoid()
         self.Linear2 = nn.Linear(self.bits, 10)
+
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), 256 * 6 * 6)

@@ -6,9 +6,9 @@ This is the Pytorch implementation of [Deep Learning of Binary Hash Codes for Fa
 
 ## Environment
 
-> Pytorch 0.4.0
-
-> torchvision 0.2.1
+> Pytorch 1.4.0
+>
+> torchvision 0.5.0
 
 ## Training
 
@@ -20,10 +20,11 @@ You will get trained models in model folder by default, and models' names are th
 
 ## Evaluation
 
-```shell
-python mAP.py --pretrained {your saved model name in model folder by default}
+```python
+python evaluate.py --pretrained {your saved model name in model folder by default}
 ```
 
 ## Tips
 
-There are some other args, which you can get them by adding '-h' or reading the code.
+1.If using Windows, keep num_works zero
+2.There are some other args, which you can get them by adding '-h' or reading the code.
