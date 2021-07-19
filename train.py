@@ -18,7 +18,7 @@ parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.9)')
 parser.add_argument('--epoch', type=int, default=128, metavar='epoch',
                     help='epoch')
-parser.add_argument('--pretrained', type=int, default=0, metavar='pretrained_model',
+parser.add_argument('--pretrained', type=str, default=0, metavar='pretrained_model',
                     help='loading pretrained model(default = None)')
 parser.add_argument('--bits', type=int, default=48, metavar='bts',
                     help='binary bits')
@@ -75,6 +75,7 @@ def train(epoch_num):
 
 
 def test():
+    net.eval()
     with torch.no_grad():
         test_loss = 0
         correct = 0
